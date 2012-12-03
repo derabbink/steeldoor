@@ -6,4 +6,7 @@
 	<packaging>pom</packaging>
 	<name>SteelDoor</name>
 	<description>secure cloud storage</description>
+	<modules>
+		<module>steeldoor-api</module>
+	</modules>
 </project>
