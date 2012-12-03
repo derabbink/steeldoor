@@ -1,0 +1,10 @@
+
+#http:
+#  rootPath: /service/*  # Default is /* (we want to serve assets from root path)
+
+aws:
+  foo: foo
+
+#message:
+#  template: The message is "%s"
+#  defaultMessage: Hello World

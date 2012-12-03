@@ -1,0 +1,1 @@
+assets are served from this folder. just like this text file is: localhost:8080/assets/assets.txt
