@@ -8,5 +8,6 @@
 	<description>secure cloud storage</description>
 	<modules>
 		<module>steeldoor-api</module>
+		<module>steeldoor-client</module>
 	</modules>
 </project>
