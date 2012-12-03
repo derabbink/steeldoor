@@ -9,5 +9,6 @@
 	<modules>
 		<module>steeldoor-api</module>
 		<module>steeldoor-client</module>
+		<module>steeldoor-service</module>
 	</modules>
 </project>
