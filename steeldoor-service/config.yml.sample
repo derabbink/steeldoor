@@ -1,0 +1,15 @@
+
+#http:
+#  rootPath: /service/*  # Default is /* (we want to serve assets from root path)
+
+aws:
+  dbEndpoint: mysql://steeldoor.serverid.region.rds.amazonaws.com:3306/steeldoor
+  dbInstanceId: steeldoor
+  dbMasterUser: steeldoor-admin
+  dbMasterPassword: secret
+  dbName: steeldoor
+  dbPort: 3306
+
+#message:
+#  template: The message is "%s"
+#  defaultMessage: Hello World

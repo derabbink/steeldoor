@@ -14,3 +14,7 @@ target/
 .settings/
 .classpath
 .project
+
+# Config files #
+config.yml
+
