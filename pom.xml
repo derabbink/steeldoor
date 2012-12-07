@@ -12,5 +12,6 @@
 		<module>steeldoor-client</module>
 		<module>steeldoor-service</module>
 		<module>steeldoor-serverfiles</module>
+		<module>steeldoor-aws</module>
 	</modules>
 </project>
