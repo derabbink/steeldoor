@@ -8,14 +8,14 @@ import com.abbink.steeldoor.serverfiles.FileInContainer;
  */
 public class File implements FileInContainer {
 	public static final byte TYPE_ID = 1;
-	public static final long HEADER_SIZE = 1 //file type id (byte: 1b)
-			+8 //file id (long, 8b)
-			+4 //owner id (int, 4b)
-			+8 //cookie (long, 8b)
-			+1 //deleted flag (boolean, 1b)
-			+8 //data length (long, 8b)
-			+8; //tail id (long, 8b)
-	public static final long FOOTER_SIZE = 160; //SHA1 hash (160b)
+	public static final long HEADER_SIZE = 1 //file type id (byte: 1B)
+			+8 //file id (long, 8B)
+			+4 //owner id (int, 4B)
+			+8 //cookie (long, 8B)
+			+1 //deleted flag (boolean, 1B)
+			+8 //data length (long, 8B)
+			+8; //tail id (long, 8B)
+	public static final long FOOTER_SIZE = 20; //SHA1 hash (20B)
 	/** size of header and footer combined */
 	public static final long OVERHEAD_SIZE = HEADER_SIZE + FOOTER_SIZE;
 	
@@ -32,7 +32,7 @@ public class File implements FileInContainer {
 	private long offset;
 	
 	/** size of the data section */
-	private long length;
+	private long dataLength;
 	
 	/** id of the file storing the remainder of data (continuation pointer) */
 	private long tailId;
@@ -56,17 +56,17 @@ public class File implements FileInContainer {
 	 * @param length length of the data section on disk
 	 * @return file complete with location info
 	 */
-	public static File addLocation(File oldFile, long offset, long length, long tailId) {
-		return new File(oldFile.getId(), oldFile.getOwnerId(), oldFile.getCookie(), oldFile.isDeleted(), offset, length, tailId);
+	public static File addLocation(File oldFile, long offset, long dataLength, long tailId) {
+		return new File(oldFile.getId(), oldFile.getOwnerId(), oldFile.getCookie(), oldFile.isDeleted(), offset, dataLength, tailId);
 	}
 	
-	private File(long id, int ownerId, long cookie, boolean deleted, long offset, long length, long tailId) {
+	private File(long id, int ownerId, long cookie, boolean deleted, long offset, long dataLength, long tailId) {
 		this.id = id;
 		this.ownerId = ownerId;
 		this.cookie = cookie;
 		this.deleted = deleted;
 		this.offset = offset;
-		this.length = length;
+		this.dataLength = dataLength;
 		this.tailId = tailId;
 	}
 	
@@ -92,8 +92,8 @@ public class File implements FileInContainer {
 	}
 	
 	/** @return length of the data section on disk */
-	public long getLength() {
-		return length;
+	public long getDataLength() {
+		return dataLength;
 	}
 	
 	/** @return id of the file storing the remainder of data */
@@ -103,5 +103,10 @@ public class File implements FileInContainer {
 	
 	public boolean continues() {
 		return getTailId() != FileInContainer.NO_TAIL_ID;
+	}
+	
+	/** @return length of file including overhead */
+	public long getFullLength() {
+		return getDataLength()+File.OVERHEAD_SIZE;
 	}
 }

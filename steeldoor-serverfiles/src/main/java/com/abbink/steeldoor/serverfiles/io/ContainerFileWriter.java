@@ -150,7 +150,7 @@ public final class ContainerFileWriter {
 				data.skip(minRead);
 			}
 		}
-		buffer = md.digest(); //160 bytes
+		buffer = md.digest(); //20 bytes
 		stream.write(buffer);
 		
 		return new DataWriteResult(length, bytesRead != -1);
@@ -169,7 +169,7 @@ public final class ContainerFileWriter {
 				stream.writeInt(file.getOwnerId());
 				stream.writeLong(file.getCookie());
 				stream.writeBoolean(FileInContainer.FILE_EXISTS);
-				stream.writeLong(file.getLength());
+				stream.writeLong(file.getDataLength());
 				stream.writeLong(file.getTailId());
 			} catch (IOException e) {
 				error = new WriteHeaderException("Writing header into buffer failed", e);

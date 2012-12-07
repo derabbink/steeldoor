@@ -30,7 +30,7 @@ public class StoreFileTest {
 	
 	private long fileId = (1L<<56)+(2L<<48)+(3L<<40)+(4L<<32)+(5L<<24)+(6L<<16)+(7L<<8)+8L;
 	private int fileOwnerId = (4<<24)+(3<<16)+(2<<8)+1;
-	private long fileCookie = (1L<<56)+(2L<<48)+(3L<<40)+(4L<<32)+(5L<<24)+(6L<<16)+(7L<<8)+8L;
+	private long fileCookie = (100L<<56)+(102L<<48)+(103L<<40)+(104L<<32)+(105L<<24)+(106L<<16)+(107L<<8)+108L;
 	
 	@Before
 	public void prepareContainerAndData() throws CreateContainerException, IOException, NoSuchAlgorithmException{
@@ -63,7 +63,7 @@ public class StoreFileTest {
 		file = File.createForStoring(fileId, fileOwnerId, fileCookie);
 		createData();
 		createChecksum();
-		file = File.addLocation(file, containerHeader.length, data.length, 0);
+		file = File.addLocation(file, containerHeader.length, data.length, FileInContainer.NO_TAIL_ID);
 		createFileHeader();
 	}
 	
@@ -92,7 +92,7 @@ public class StoreFileTest {
 		dstream.writeInt(file.getOwnerId());
 		dstream.writeLong(file.getCookie());
 		dstream.writeBoolean(FileInContainer.FILE_EXISTS);
-		dstream.writeLong(file.getLength());
+		dstream.writeLong(file.getDataLength());
 		dstream.writeLong(file.getTailId());
 		
 		dstream.flush();
@@ -103,7 +103,7 @@ public class StoreFileTest {
 	
 	@Test
 	public void verifyBytesWritten() throws IOException, WriteFileInContainerException {
-		cont.storeFile(file, new ByteArrayInputStream(data), 0);
+		cont.storeFile(file, new ByteArrayInputStream(data), FileInContainer.NO_TAIL_ID);
 		
 		//apache commons' implementation required
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();

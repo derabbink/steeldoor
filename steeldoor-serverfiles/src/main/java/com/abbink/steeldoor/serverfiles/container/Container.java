@@ -18,13 +18,13 @@ import com.abbink.steeldoor.serverfiles.io.ContainerFileWriter;
  * which holds many logical files
  */
 public class Container {
-	public static long HEADER_SIZE = 8 //max size (long, 8b)
-			+1; //sealed flag (boolean, 1b)
-	public static boolean SEALED = true;
-	public static boolean UNSEALED = !SEALED;
-	public static long MAX_SIZE = 1024*1024*1024; //1GB
+	public static final long HEADER_SIZE = 8 //max size (long, 8B)
+			+1; //sealed flag (boolean, 1B)
+	public static final boolean SEALED = true;
+	public static final boolean UNSEALED = !SEALED;
+	public static final long MAX_SIZE = 1024*1024*1024; //1GB
 	/** number of free bytes required to not seal the container after a write */
-	public static long MIN_FREE_SPACE = 256;
+	public static final long MIN_FREE_SPACE = 256;
 	
 	public interface SealedListener {
 		public void notifySealed(Container container);
@@ -140,7 +140,7 @@ public class Container {
 	
 	
 	/**
-	 * adds a file to this container.
+	 * adds a file to this container, or at least the first bytes until container is full
 	 * adds it to own index.
 	 * @param file contains meta data, except offset and data length
 	 * @param data raw (undecorated) stream of writable data
@@ -151,6 +151,7 @@ public class Container {
 	public synchronized File storeFile(File file, InputStream data, long tailId) throws WriteFileInContainerException {
 		try {
 			file = ContainerFileWriter.writeFile(this, file, data, getRemainingSize(), tailId);
+			currentSize += file.getFullLength();
 			getFiles().put(file.getId(), file);
 			if (isFull())
 				seal();
