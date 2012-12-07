@@ -1,4 +1,4 @@
-package com.abbink.steeldoor.serverfiles;
+package com.abbink.steeldoor.serverfiles.io;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -12,11 +12,12 @@ import java.io.RandomAccessFile;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.container.Container;
 import com.abbink.steeldoor.serverfiles.exceptions.ContainerFileCorruptedException;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
-import com.abbink.steeldoor.serverfiles.exceptions.WriteContainerFileException;
+import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.WriteHeaderException;
 import com.abbink.steeldoor.serverfiles.file.File;
 
@@ -35,7 +36,7 @@ public final class ContainerFileWriter {
 				stream.writeLong(maxSize);
 				stream.writeBoolean(Container.UNSEALED);
 			} catch (IOException e) {
-				error = new CreateContainerException("Unable to write maxSize and sealed", e);
+				error = new CreateContainerException("Unable to write container header", e);
 			}
 			stream.close();
 		} catch (FileNotFoundException e) {
@@ -50,34 +51,35 @@ public final class ContainerFileWriter {
 	}
 	
 	/**
-	 * 
-	 * @param container physical file that will be written to
+	 * Writes {@linkplain data} and metadata until container is full or stream completes
+	 * @param container file that will be written to. Must be unsealed and have enough free space for metad ata and >=1 byte of data.
 	 * @param file contains file meta data known so far
-	 * @param data
+	 * @param data (unbuffered) stream of data to be written
+	 * @param tailId continuation pointer to use if container is too small
 	 * @return new file containing ALL meta data
-	 * @throws WriteContainerFileException
+	 * @throws WriteFileInContainerException
 	 */
-	public static File writeFile(Container container, File file, InputStream data) throws WriteContainerFileException, ContainerFileCorruptedException {
+	public static File writeFile(Container container, File file, InputStream data, long maxLength, long tailId) throws WriteFileInContainerException, ContainerFileCorruptedException {
 		long beginPos = container.getCurrentSize();
-		WriteContainerFileException error = null;
+		WriteFileInContainerException error = null;
 		ContainerFileCorruptedException seriousError = null;
 		try {
 			BufferedOutputStream bstream = new BufferedOutputStream(new FileOutputStream(container.getFileName(), true));
-			long length = 0;
+			DataWriteResult written = null;
 			try {
 				writePadding(bstream, File.HEADER_SIZE);
-				length = writeFileDataAndChecksum(bstream, new BufferedInputStream(data));
+				written = writeFileDataAndChecksum(bstream, new BufferedInputStream(data), maxLength-File.OVERHEAD_SIZE);
+				if (written.isCompleted())
+					tailId = FileInContainer.NO_TAIL_ID; //we don't need to continue
 			} catch (IOException e) {
-				error = new WriteContainerFileException("Unable to write file contents", e);
+				error = new WriteFileInContainerException("Unable to write file contents", e);
 			} catch (NoSuchAlgorithmException e) {
-				error = new WriteContainerFileException("Unable to find checksum provider", e);
+				error = new WriteFileInContainerException("Unable to find checksum provider", e);
 			}
 			bstream.close();
 			
-			file = File.addLocation(file, beginPos, length);
-			
 			if (error != null) {
-				error = new WriteContainerFileException("Write reverted, nothing written", error);
+				error = new WriteFileInContainerException("Write reverted, nothing written", error);
 				try {
 					truncate(container, beginPos);
 				} catch (TruncateContainerFileException e) {
@@ -85,13 +87,14 @@ public final class ContainerFileWriter {
 				}
 			}
 			else {
+				file = File.addLocation(file, beginPos, written.getLength(), tailId);
 				writeFileHeaders(container, file);
 			}
 		} catch (FileNotFoundException e) {
-			error = new WriteContainerFileException("Unable to open FileOutputStream", e);
+			error = new WriteFileInContainerException("Unable to open FileOutputStream", e);
 		}
 		catch (IOException e) {
-			error = new WriteContainerFileException("Unable to close FileOutputStream", e);
+			error = new WriteFileInContainerException("Unable to close FileOutputStream", e);
 		} catch (WriteHeaderException e) {
 			seriousError = new ContainerFileCorruptedException("Unable to write header", e);
 		}
@@ -115,28 +118,42 @@ public final class ContainerFileWriter {
 	}
 	
 	/**
-	 * writes {@linkplain data} to {@linkplain stream},
+	 * writes {@linkplain data} to {@linkplain stream} for a maximum of {@linkplain maxLength} bytes,
 	 * calculates the checksum and writes that after the data is written.
 	 * @param stream destination stream
-	 * @param data origin stream
-	 * @return the length of {@linkplain data}
+	 * @param data origin stream. stream position will be left at the first unconsumed byte
+	 * @param maxLength maximum number of bytes to be written
+	 * @return value indicating the nr of bytes written and if all input was processed
 	 * @throws NoSuchAlgorithmException if the checksum/digest provider cannot be found
 	 * @throws IOException if reading or writing something goes bad
 	 */
-	private static long writeFileDataAndChecksum(BufferedOutputStream stream, BufferedInputStream data) throws NoSuchAlgorithmException, IOException {
+	private static DataWriteResult writeFileDataAndChecksum(BufferedOutputStream stream, BufferedInputStream data, long maxLength) throws NoSuchAlgorithmException, IOException {
 		MessageDigest md = MessageDigest.getInstance("SHA1");
 		long length = 0;
 		byte[] buffer = new byte[1024];
 		int bytesRead;
+		data.mark(buffer.length);
 		while((bytesRead = data.read(buffer)) != -1) {
-			length += bytesRead;
-			stream.write(buffer, 0, bytesRead);
-			md.update(buffer, 0, bytesRead);
+			//don't cross maxLength line
+			int minRead = (int) Math.min(bytesRead, maxLength);
+			length += minRead;
+			maxLength -= minRead;
+			stream.write(buffer, 0, minRead);
+			md.update(buffer, 0, minRead);
+			
+			//only continue if maxLength was not reached yet
+			if (maxLength > 0)
+				data.mark(buffer.length);
+			else {
+				//set stream position to first unconsumed byte
+				data.reset();
+				data.skip(minRead);
+			}
 		}
 		buffer = md.digest(); //160 bytes
 		stream.write(buffer);
 		
-		return length;
+		return new DataWriteResult(length, bytesRead != -1);
 	}
 	
 	private static void writeFileHeaders(Container container, File file) throws WriteHeaderException {
@@ -151,8 +168,9 @@ public final class ContainerFileWriter {
 				stream.writeLong(file.getId());
 				stream.writeInt(file.getOwnerId());
 				stream.writeLong(file.getCookie());
-				stream.writeBoolean(ContainerFile.FILE_EXISTS);
+				stream.writeBoolean(FileInContainer.FILE_EXISTS);
 				stream.writeLong(file.getLength());
+				stream.writeLong(file.getTailId());
 			} catch (IOException e) {
 				error = new WriteHeaderException("Writing header into buffer failed", e);
 			}

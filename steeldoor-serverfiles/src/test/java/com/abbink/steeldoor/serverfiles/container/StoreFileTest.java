@@ -14,9 +14,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.abbink.steeldoor.serverfiles.ContainerFile;
+import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
-import com.abbink.steeldoor.serverfiles.exceptions.WriteContainerFileException;
+import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException;
 import com.abbink.steeldoor.serverfiles.file.File;
 
 public class StoreFileTest {
@@ -40,10 +40,9 @@ public class StoreFileTest {
 	}
 	
 	private void createContainer() throws IOException, CreateContainerException {
-		containerFile = java.io.File.createTempFile("container_", ".data", new java.io.File("tmp"));
+		containerFile = java.io.File.createTempFile("container_", ".test", new java.io.File("tmp"));
 		containerFile.delete();
 		cont = Container.createNew(containerFile.getAbsolutePath(), Container.MAX_SIZE);
-		
 	}
 	
 	private void createContainerHeader() throws IOException {
@@ -64,7 +63,7 @@ public class StoreFileTest {
 		file = File.createForStoring(fileId, fileOwnerId, fileCookie);
 		createData();
 		createChecksum();
-		file = File.addLocation(file, containerHeader.length, data.length);
+		file = File.addLocation(file, containerHeader.length, data.length, 0);
 		createFileHeader();
 	}
 	
@@ -92,8 +91,9 @@ public class StoreFileTest {
 		dstream.writeLong(file.getId());
 		dstream.writeInt(file.getOwnerId());
 		dstream.writeLong(file.getCookie());
-		dstream.writeBoolean(ContainerFile.FILE_EXISTS);
+		dstream.writeBoolean(FileInContainer.FILE_EXISTS);
 		dstream.writeLong(file.getLength());
+		dstream.writeLong(file.getTailId());
 		
 		dstream.flush();
 		fileHeader = bstream.toByteArray();
@@ -102,8 +102,8 @@ public class StoreFileTest {
 	}
 	
 	@Test
-	public void verifyBytesWritten() throws IOException, WriteContainerFileException {
-		cont.storeFile(file, new ByteArrayInputStream(data));
+	public void verifyBytesWritten() throws IOException, WriteFileInContainerException {
+		cont.storeFile(file, new ByteArrayInputStream(data), 0);
 		
 		//apache commons' implementation required
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();
