@@ -19,6 +19,11 @@
 			<version>4.10</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk</artifactId>
+			<version>1.3.26</version>
+		</dependency>
 	</dependencies>
 	<description>contains interactions with AWS</description>
 </project>
