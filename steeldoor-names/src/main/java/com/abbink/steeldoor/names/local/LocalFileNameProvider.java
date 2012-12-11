@@ -2,7 +2,7 @@ package com.abbink.steeldoor.names.local;
 
 import java.util.Collection;
 
-public interface LocalNameProvider {
+public interface LocalFileNameProvider {
 	
 	/** produces a file id and marks it as reserved */
 	public long reserveForFile();
@@ -14,11 +14,11 @@ public interface LocalNameProvider {
 	public void useReservationForFile(long name);
 	
 	/** frees up a previously used name */
-	public void returnUsedName(long name);
+	public void returnUsedNameForFile(long name);
 	
 	/** hands this local name provider a name that it can distribute as pleased */
-	public void addAuthorizedName(long name);
+	public void addAuthorizedNameForFile(long name);
 	
-	/** plural equivalent to {@linkplain #addAuthorizedName(long)} */
-	public void addAuthorizedNames(Collection<Long> names);
+	/** plural equivalent to {@linkplain #addAuthorizedNameForFile(long)} */
+	public void addAuthorizedNamesForFile(Collection<Long> names);
 }

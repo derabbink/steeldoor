@@ -1,5 +1,6 @@
 package com.abbink.steeldoor.serverfiles.container;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,13 +10,17 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.exceptions.ContainerFileCorruptedException;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
+import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
 import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException;
 import com.abbink.steeldoor.serverfiles.file.File;
-import com.abbink.steeldoor.serverfiles.io.ContainerFileWriter;
+import com.abbink.steeldoor.serverfiles.file.FileTail;
+import com.abbink.steeldoor.serverfiles.io.logical.ContainerWriter;
+import com.abbink.steeldoor.serverfiles.io.logical.FileWriter;
 
 /**
  * class representing a physical container file
  * which holds many logical files
+ * unaware of replication
  */
 public class Container {
 	public static final long HEADER_SIZE = 8 //max size (long, 8B)
@@ -23,7 +28,7 @@ public class Container {
 	public static final boolean SEALED = true;
 	public static final boolean UNSEALED = !SEALED;
 	public static final long MAX_SIZE = 1024*1024*1024; //1GB
-	/** number of free bytes required to not seal the container after a write */
+	/** number of free bytes required to keep container unsealed after a write */
 	public static final long MIN_FREE_SPACE = 256;
 	
 	public interface SealedListener {
@@ -48,7 +53,7 @@ public class Container {
 	 */
 	public static Container createNew(String fileName, long maxSize) throws CreateContainerException {
 		try {
-			ContainerFileWriter.createNew(fileName, maxSize);
+			ContainerWriter.createNew(fileName, maxSize);
 		} catch (CreateContainerException e) {
 			throw new CreateContainerException("Could not write initial container file", e);
 		}
@@ -113,7 +118,7 @@ public class Container {
 	}
 	
 	public boolean isFull() {
-		return isSealed() || getRemainingSize() > MIN_FREE_SPACE;
+		return isSealed() || getRemainingSize() < MIN_FREE_SPACE;
 	}
 	
 	public void addSealListener(SealedListener listener) {
@@ -129,6 +134,7 @@ public class Container {
 	 */
 	public void seal() {
 		sealed = true;
+		ContainerWriter.seal(this);
 		notifySealListeners();
 	}
 	
@@ -138,19 +144,26 @@ public class Container {
 		}
 	}
 	
+	/**
+	 * @param length absolute length of container file (including overhead bytes)
+	 */
+	public void truncate(long length) throws TruncateContainerFileException {
+		ContainerWriter.truncate(this, length);
+	}
+	
 	
 	/**
 	 * adds a file to this container, or at least the first bytes until container is full
 	 * adds it to own index.
-	 * @param file contains meta data, except offset and data length
-	 * @param data raw (undecorated) stream of writable data
-	 * @param tailId continuation pointer to use if container is too small
-	 * @return updated file with offset and data length included
+	 * @param file contains meta data, except offset, data length and tail id
+	 * @param data (buffered) stream of writable data
+	 * @param tailId reserved continuation pointer to use if container is too small
+	 * @return updated file with offset, data length and tail id included
 	 * @throws WriteContainerFileException 
 	 */
-	public synchronized File storeFile(File file, InputStream data, long tailId) throws WriteFileInContainerException {
+	public synchronized File storeFile(File file, BufferedInputStream data, long tailId) throws WriteFileInContainerException {
 		try {
-			file = ContainerFileWriter.writeFile(this, file, data, getRemainingSize(), tailId);
+			file = FileWriter.writeFile(this, file, data, getRemainingSize(), tailId);
 			currentSize += file.getFullLength();
 			getFiles().put(file.getId(), file);
 			if (isFull())
@@ -159,6 +172,29 @@ public class Container {
 		} catch (ContainerFileCorruptedException e) {
 			seal();
 			throw new WriteFileInContainerException("Could not write file", e);
+		}
+	}
+	
+	/**
+	 * adds a file tail to this container, or at least the first bytes until container is full
+	 * adds it to own index.
+	 * @param fileTail contains meta data, except offset, data length and next tail id
+	 * @param data (buffered) stream of writable data
+	 * @param nextTailId reserved continuation pointer to use if container is too small
+	 * @return updated file tail with offset, data length and tail id included
+	 * @throws WriteContainerFileException 
+	 */
+	public synchronized FileTail storeFileTail(FileTail fileTail, BufferedInputStream data, long nextTailId) throws WriteFileInContainerException {
+		try {
+			fileTail = FileWriter.writeFileTail(this, fileTail, data, getRemainingSize(), nextTailId);
+			currentSize += fileTail.getFullLength();
+			getFiles().put(fileTail.getId(), fileTail);
+			if (isFull())
+				seal();
+			return fileTail;
+		} catch (ContainerFileCorruptedException e) {
+			seal();
+			throw new WriteFileInContainerException("Could not write file tail", e);
 		}
 	}
 }

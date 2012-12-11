@@ -35,6 +35,12 @@
 			<artifactId>steeldoor-aws</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+			<groupId>com.abbink</groupId>
+			<artifactId>steeldoor-names</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
-	<description>contains implementation of different file types the server can host</description>
+	<description>Contains implementation of different file types the server can host.
+Handles replication over multiple machines</description>
 </project>

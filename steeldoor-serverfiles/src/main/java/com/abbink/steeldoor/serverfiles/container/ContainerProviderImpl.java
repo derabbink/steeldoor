@@ -26,8 +26,17 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 		}
 	};
 	
-	public ContainerProviderImpl() {
-		
+//	public static ContainerProviderImpl fromExisting() {
+//		return new ContainerProviderImpl();
+//	}
+	
+	public static ContainerProviderImpl createNew() {
+		return new ContainerProviderImpl();
+	}
+	
+	private ContainerProviderImpl() {
+		current = getNewContainer();
+		prepareNextContainer();
 	}
 	
 	/**
@@ -38,8 +47,14 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 	}
 	
 	public void notifySealed(Container container) {
+		unsubscribeAsListener(container);
 		switchToNextContainer();
 		prepareNextContainer();
+	}
+	
+	/** removes this from the container's sealed listeners */
+	private void unsubscribeAsListener(Container container) {
+		container.removeSealListener(this);
 	}
 	
 	/**

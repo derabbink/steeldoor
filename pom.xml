@@ -13,5 +13,6 @@
 		<module>steeldoor-service</module>
 		<module>steeldoor-serverfiles</module>
 		<module>steeldoor-aws</module>
-	</modules>
+    <module>steeldoor-names</module>
+  </modules>
 </project>

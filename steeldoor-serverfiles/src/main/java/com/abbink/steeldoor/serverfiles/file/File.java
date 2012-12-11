@@ -60,7 +60,7 @@ public class File implements FileInContainer {
 		return new File(oldFile.getId(), oldFile.getOwnerId(), oldFile.getCookie(), oldFile.isDeleted(), offset, dataLength, tailId);
 	}
 	
-	private File(long id, int ownerId, long cookie, boolean deleted, long offset, long dataLength, long tailId) {
+	protected File(long id, int ownerId, long cookie, boolean deleted, long offset, long dataLength, long tailId) {
 		this.id = id;
 		this.ownerId = ownerId;
 		this.cookie = cookie;
@@ -68,6 +68,10 @@ public class File implements FileInContainer {
 		this.offset = offset;
 		this.dataLength = dataLength;
 		this.tailId = tailId;
+	}
+	
+	public byte getTypeId() {
+		return TYPE_ID;
 	}
 	
 	public long getId() {

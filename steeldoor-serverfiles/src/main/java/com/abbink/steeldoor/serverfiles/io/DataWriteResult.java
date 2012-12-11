@@ -1,5 +1,8 @@
 package com.abbink.steeldoor.serverfiles.io;
 
+/**
+ * indicating how far a stream of data was written
+ */
 public class DataWriteResult {
 	private long length;
 	private boolean completed;

@@ -2,6 +2,7 @@ package com.abbink.steeldoor.serverfiles.container;
 
 import static org.junit.Assert.assertArrayEquals;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -93,7 +94,7 @@ public class StoreMultipleFilesTest {
 		java.io.ByteArrayOutputStream bstream = new java.io.ByteArrayOutputStream();
 		DataOutputStream dstream = new DataOutputStream(bstream);
 		
-		dstream.writeByte(File.TYPE_ID);
+		dstream.writeByte(file1.getTypeId());
 		dstream.writeLong(file1.getId());
 		dstream.writeInt(file1.getOwnerId());
 		dstream.writeLong(file1.getCookie());
@@ -110,7 +111,7 @@ public class StoreMultipleFilesTest {
 		bstream = new java.io.ByteArrayOutputStream();
 		dstream = new DataOutputStream(bstream);
 		
-		dstream.writeByte(File.TYPE_ID);
+		dstream.writeByte(file2.getTypeId());
 		dstream.writeLong(file2.getId());
 		dstream.writeInt(file2.getOwnerId());
 		dstream.writeLong(file2.getCookie());
@@ -126,8 +127,8 @@ public class StoreMultipleFilesTest {
 	
 	@Test
 	public void verifyBytesWritten() throws IOException, WriteFileInContainerException {
-		cont.storeFile(file1, new ByteArrayInputStream(data1), FileInContainer.NO_TAIL_ID);
-		cont.storeFile(file2, new ByteArrayInputStream(data2), FileInContainer.NO_TAIL_ID);
+		cont.storeFile(file1, new BufferedInputStream(new ByteArrayInputStream(data1)), FileInContainer.NO_TAIL_ID);
+		cont.storeFile(file2, new BufferedInputStream(new ByteArrayInputStream(data2)), FileInContainer.NO_TAIL_ID);
 		
 		//apache commons' implementation required
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();

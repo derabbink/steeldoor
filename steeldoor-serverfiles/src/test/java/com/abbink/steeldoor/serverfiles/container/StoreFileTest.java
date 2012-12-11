@@ -2,6 +2,7 @@ package com.abbink.steeldoor.serverfiles.container;
 
 import static org.junit.Assert.assertArrayEquals;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -87,7 +88,7 @@ public class StoreFileTest {
 		java.io.ByteArrayOutputStream bstream = new java.io.ByteArrayOutputStream();
 		DataOutputStream dstream = new DataOutputStream(bstream);
 		
-		dstream.writeByte(File.TYPE_ID);
+		dstream.writeByte(file.getTypeId());
 		dstream.writeLong(file.getId());
 		dstream.writeInt(file.getOwnerId());
 		dstream.writeLong(file.getCookie());
@@ -103,7 +104,7 @@ public class StoreFileTest {
 	
 	@Test
 	public void verifyBytesWritten() throws IOException, WriteFileInContainerException {
-		cont.storeFile(file, new ByteArrayInputStream(data), FileInContainer.NO_TAIL_ID);
+		cont.storeFile(file, new BufferedInputStream(new ByteArrayInputStream(data)), FileInContainer.NO_TAIL_ID);
 		
 		//apache commons' implementation required
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();

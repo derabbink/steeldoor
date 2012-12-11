@@ -1,4 +1,4 @@
-package com.abbink.steeldoor.serverfiles.io;
+package com.abbink.steeldoor.serverfiles.io.logical;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -7,7 +7,6 @@ import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -15,51 +14,28 @@ import java.security.NoSuchAlgorithmException;
 import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.container.Container;
 import com.abbink.steeldoor.serverfiles.exceptions.ContainerFileCorruptedException;
-import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
 import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.WriteHeaderException;
 import com.abbink.steeldoor.serverfiles.file.File;
+import com.abbink.steeldoor.serverfiles.file.FileTail;
+import com.abbink.steeldoor.serverfiles.io.DataWriteResult;
 
-public final class ContainerFileWriter {
-	
-	/**
-	 * creates new container file that does not contain any logical files yet
-	 * @param fileName
-	 * @throws Exception 
-	 */
-	public static void createNew(String fileName, long maxSize) throws CreateContainerException {
-		CreateContainerException error = null;
-		try {
-			DataOutputStream stream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(fileName, false)));
-			try {
-				stream.writeLong(maxSize);
-				stream.writeBoolean(Container.UNSEALED);
-			} catch (IOException e) {
-				error = new CreateContainerException("Unable to write container header", e);
-			}
-			stream.close();
-		} catch (FileNotFoundException e) {
-			error = new CreateContainerException("Unable to open FileOutputStream", e);
-		}
-		catch (IOException e) {
-			error = new CreateContainerException("Unable to close FileOutputStream", e);
-		}
-		
-		if (error!=null)
-			throw error;
-	}
+/**
+ * capable of writing logical Files to a container file
+ */
+public final class FileWriter {
 	
 	/**
 	 * Writes {@linkplain data} and metadata until container is full or stream completes
-	 * @param container file that will be written to. Must be unsealed and have enough free space for metad ata and >=1 byte of data.
+	 * @param container file that will be written to. Must be unsealed and have enough free space for meta data and >=1 byte of data.
 	 * @param file contains file meta data known so far
-	 * @param data (unbuffered) stream of data to be written
+	 * @param data (buffered) stream of data to be written
 	 * @param tailId continuation pointer to use if container is too small
 	 * @return new file containing ALL meta data
 	 * @throws WriteFileInContainerException
 	 */
-	public static File writeFile(Container container, File file, InputStream data, long maxLength, long tailId) throws WriteFileInContainerException, ContainerFileCorruptedException {
+	public static File writeFile(Container container, File file, BufferedInputStream data, long maxLength, long tailId) throws WriteFileInContainerException, ContainerFileCorruptedException {
 		long beginPos = container.getCurrentSize();
 		WriteFileInContainerException error = null;
 		ContainerFileCorruptedException seriousError = null;
@@ -68,7 +44,7 @@ public final class ContainerFileWriter {
 			DataWriteResult written = null;
 			try {
 				writePadding(bstream, File.HEADER_SIZE);
-				written = writeFileDataAndChecksum(bstream, new BufferedInputStream(data), maxLength-File.OVERHEAD_SIZE);
+				written = writeFileDataAndChecksum(bstream, data, maxLength-File.OVERHEAD_SIZE);
 				if (written.isCompleted())
 					tailId = FileInContainer.NO_TAIL_ID; //we don't need to continue
 			} catch (IOException e) {
@@ -81,7 +57,7 @@ public final class ContainerFileWriter {
 			if (error != null) {
 				error = new WriteFileInContainerException("Write reverted, nothing written", error);
 				try {
-					truncate(container, beginPos);
+					container.truncate(beginPos);
 				} catch (TruncateContainerFileException e) {
 					seriousError = new ContainerFileCorruptedException("Reverting write failed", e);
 				}
@@ -105,6 +81,63 @@ public final class ContainerFileWriter {
 			throw error;
 		
 		return file;
+	}
+	
+	/**
+	 * Writes {@linkplain data} and metadata until container is full or stream completes
+	 * @param container file that will be written to. Must be unsealed and have enough free space for meta data and >=1 byte of data.
+	 * @param fileTail contains file tail meta data known so far
+	 * @param data (buffered) stream of data to be written
+	 * @param nextTailId continuation pointer to use if container is too small
+	 * @return new file tail containing ALL meta data
+	 * @throws WriteFileInContainerException
+	 */
+	public static FileTail writeFileTail(Container container, FileTail fileTail, BufferedInputStream data, long maxLength, long nextTailId) throws WriteFileInContainerException, ContainerFileCorruptedException {
+		long beginPos = container.getCurrentSize();
+		WriteFileInContainerException error = null;
+		ContainerFileCorruptedException seriousError = null;
+		try {
+			BufferedOutputStream bstream = new BufferedOutputStream(new FileOutputStream(container.getFileName(), true));
+			DataWriteResult written = null;
+			try {
+				writePadding(bstream, FileTail.HEADER_SIZE);
+				written = writeFileTailDataAndChecksum(bstream, data, maxLength-FileTail.OVERHEAD_SIZE);
+				if (written.isCompleted())
+					nextTailId = FileInContainer.NO_TAIL_ID; //we don't need to continue
+			} catch (IOException e) {
+				error = new WriteFileInContainerException("Unable to write file tail contents", e);
+			} catch (NoSuchAlgorithmException e) {
+				error = new WriteFileInContainerException("Unable to find checksum provider", e);
+			}
+			bstream.close();
+			
+			if (error != null) {
+				error = new WriteFileInContainerException("Write reverted, nothing written", error);
+				try {
+					container.truncate(beginPos);
+				} catch (TruncateContainerFileException e) {
+					seriousError = new ContainerFileCorruptedException("Reverting write failed", e);
+				}
+			}
+			else {
+				fileTail = FileTail.addLocation(fileTail, beginPos, written.getLength(), nextTailId);
+				writeFileTailHeaders(container, fileTail);
+			}
+		} catch (FileNotFoundException e) {
+			error = new WriteFileInContainerException("Unable to open FileOutputStream", e);
+		}
+		catch (IOException e) {
+			error = new WriteFileInContainerException("Unable to close FileOutputStream", e);
+		} catch (WriteHeaderException e) {
+			seriousError = new ContainerFileCorruptedException("Unable to write header", e);
+		}
+		
+		if (seriousError != null)
+			throw seriousError;
+		if (error!=null)
+			throw error;
+		
+		return fileTail;
 	}
 	
 	private static void writePadding(BufferedOutputStream stream, long size) throws IOException {
@@ -156,6 +189,10 @@ public final class ContainerFileWriter {
 		return new DataWriteResult(length, bytesRead != -1);
 	}
 	
+	private static DataWriteResult writeFileTailDataAndChecksum(BufferedOutputStream stream, BufferedInputStream data, long maxLength) throws NoSuchAlgorithmException, IOException {
+		return writeFileDataAndChecksum(stream, data, maxLength);
+	}
+	
 	private static void writeFileHeaders(Container container, File file) throws WriteHeaderException {
 		WriteHeaderException error = null;
 		try {
@@ -164,7 +201,7 @@ public final class ContainerFileWriter {
 			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 			DataOutputStream stream = new DataOutputStream(buffer);
 			try {
-				stream.writeByte(File.TYPE_ID);
+				stream.writeByte(file.getTypeId());
 				stream.writeLong(file.getId());
 				stream.writeInt(file.getOwnerId());
 				stream.writeLong(file.getCookie());
@@ -174,13 +211,16 @@ public final class ContainerFileWriter {
 			} catch (IOException e) {
 				error = new WriteHeaderException("Writing header into buffer failed", e);
 			}
-			try {
-				rnd.seek(file.getOffset());
-				rnd.write(buffer.toByteArray());
-			} catch (IOException e) {
-				error = new WriteHeaderException("Writing buffered header failed", e);
+			if (error == null) {
+				try {
+					rnd.seek(file.getOffset());
+					rnd.write(buffer.toByteArray());
+				} catch (IOException e) {
+					error = new WriteHeaderException("Writing buffered header failed", e);
+				}
 			}
 			stream.close(); //doesn't really do anything
+			buffer.close();
 			rnd.close();
 		} catch (FileNotFoundException e) {
 			error = new WriteHeaderException("Unable to open RandomAccessFile", e);
@@ -192,20 +232,40 @@ public final class ContainerFileWriter {
 			throw error;
 	}
 	
-	private static void truncate(Container container, long length) throws TruncateContainerFileException {
-		TruncateContainerFileException error = null;
+	private static void writeFileTailHeaders(Container container, FileTail fileTail) throws WriteHeaderException {
+		WriteHeaderException error = null;
 		try {
 			RandomAccessFile rnd = new RandomAccessFile(container.getFileName(), "rw");
+			//java's ByteArrayOutputStream implementation suffices
+			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+			DataOutputStream stream = new DataOutputStream(buffer);
 			try {
-				rnd.setLength(length);
+				stream.writeByte(fileTail.getTypeId());
+				stream.writeLong(fileTail.getId());
+				stream.writeLong(fileTail.getHeadId());
+				stream.writeInt(fileTail.getOwnerId());
+				stream.writeLong(fileTail.getCookie());
+				stream.writeBoolean(FileInContainer.FILE_EXISTS);
+				stream.writeLong(fileTail.getDataLength());
+				stream.writeLong(fileTail.getTailId());
 			} catch (IOException e) {
-				error = new TruncateContainerFileException("Setting length failed", e);
+				error = new WriteHeaderException("Writing header into buffer failed", e);
 			}
+			if (error == null) {
+				try {
+					rnd.seek(fileTail.getOffset());
+					rnd.write(buffer.toByteArray());
+				} catch (IOException e) {
+					error = new WriteHeaderException("Writing buffered header failed", e);
+				}
+			}
+			stream.close(); //doesn't really do anything
+			buffer.close();
 			rnd.close();
 		} catch (FileNotFoundException e) {
-			error = new TruncateContainerFileException("Could not open RandomAccessFile", e);
+			error = new WriteHeaderException("Unable to open RandomAccessFile", e);
 		} catch (IOException e) {
-			error = new TruncateContainerFileException("Could not close RandomAccessFile", e);
+			error = new WriteHeaderException("Unable to close either DataOutputStream (unlikely) or RandomAccessFile", e);
 		}
 		
 		if (error != null)
