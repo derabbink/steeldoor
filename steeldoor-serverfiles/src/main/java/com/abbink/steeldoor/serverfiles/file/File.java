@@ -111,6 +111,6 @@ public class File implements FileInContainer {
 	
 	/** @return length of file including overhead */
 	public long getFullLength() {
-		return getDataLength()+File.OVERHEAD_SIZE;
+		return getDataLength()+OVERHEAD_SIZE;
 	}
 }

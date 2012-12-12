@@ -23,7 +23,7 @@ public class MasterContainerReplicatorImpl implements MasterContainerReplicator 
 		return new MasterContainerReplicatorImpl(localContainerProvider);
 	}
 	
-	private MasterContainerReplicatorImpl(ContainerProvider localContainerProvider) {
+	protected MasterContainerReplicatorImpl(ContainerProvider localContainerProvider) {
 		this.localContainerProvider = localContainerProvider;
 		//TODO
 		
@@ -84,7 +84,7 @@ public class MasterContainerReplicatorImpl implements MasterContainerReplicator 
 	 * @param nrOfReplicas how many remote writes to issue
 	 * @throws RemoteReplicationException
 	 */
-	private void storeFileRemotely(File file, int nrOfReplicas) throws RemoteReplicationException {
+	protected void storeFileRemotely(File file, int nrOfReplicas) throws RemoteReplicationException {
 		if (nrOfReplicas == 0)
 			return;
 		//TODO
@@ -102,7 +102,7 @@ public class MasterContainerReplicatorImpl implements MasterContainerReplicator 
 	 * @param nrOfReplicas how many remote writes to issue
 	 * @throws RemoteReplicationException
 	 */
-	private void storeFileTailRemotely(FileTail fileTail, int nrOfReplicas) throws RemoteReplicationException {
+	protected void storeFileTailRemotely(FileTail fileTail, int nrOfReplicas) throws RemoteReplicationException {
 		if (nrOfReplicas == 0)
 			return;
 		//TODO

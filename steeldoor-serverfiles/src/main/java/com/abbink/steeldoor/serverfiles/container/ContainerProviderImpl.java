@@ -19,6 +19,8 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 	/** used for synchronizing access to {@linkplain #next} */
 	private Object nextLock = new Object();
 	
+	private long maxSize;
+	
 	private static UncaughtExceptionHandler prepareNextContainerExceptionHandler = new UncaughtExceptionHandler() {
 		public void uncaughtException(Thread t, Throwable e) {
 			Exception wrapped = new Exception("Uncaught exception in container preparation thread: "+t.toString(), e);
@@ -30,12 +32,18 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 //		return new ContainerProviderImpl();
 //	}
 	
-	public static ContainerProviderImpl createNew() {
-		return new ContainerProviderImpl();
+	public static ContainerProviderImpl createNew(long maxSize) {
+		ContainerProviderImpl result = new ContainerProviderImpl(maxSize);
+		result.init();
+		return result;
 	}
 	
-	private ContainerProviderImpl() {
-		current = getNewContainer();
+	protected ContainerProviderImpl(long maxSize) {
+		this.maxSize = maxSize;
+	}
+	
+	protected void init() {
+		current = getNewSubscribedContainer();
 		prepareNextContainer();
 	}
 	
@@ -44,6 +52,10 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 	 */
 	public synchronized Container getCurrentContainer() {
 		return current;
+	}
+	
+	public long getMaxSize() {
+		return maxSize;
 	}
 	
 	public void notifySealed(Container container) {
@@ -62,8 +74,28 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 	 * or if someone is currently executing {@linkplain #getCurrentContainer()}
 	 */
 	private synchronized void switchToNextContainer() {
+		current = getNext();
+	}
+	
+	/**
+	 * gets the next container, waits if necessary
+	 * exposed for testing
+	 * @return
+	 */
+	protected Container getNext() {
 		synchronized (nextLock) {
-			current = next;
+			return next;
+		}
+	}
+	
+	/**
+	 * sets the next container, waits if necessary
+	 * exposed for testing
+	 * @param next
+	 */
+	protected void setNext(Container next) {
+		synchronized (nextLock) {
+			this.next = next;
 		}
 	}
 	
@@ -75,9 +107,7 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 		Thread t = new Thread(new Runnable() {
 			
 			public void run() {
-				synchronized (nextLock) {
-					next = getNewContainer();
-				}
+				setNext(getNewSubscribedContainer());
 			}
 			
 		});
@@ -85,13 +115,27 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 		t.run();
 	}
 	
-	private Container getNewContainer() throws CreateContainerException {
+	/**
+	 * @return a container with THIS added as a sealedListener
+	 * @throws CreateContainerException
+	 */
+	private Container getNewSubscribedContainer() throws CreateContainerException {
+		Container result = getNewContainer();
+		result.addSealListener(this);
+		return result;
+	}
+	
+	protected Container getNewContainer() throws CreateContainerException {
+		return createContainerFromSpec(getMaxSize());
+	}
+	
+	protected static Container createContainerFromSpec(long maxSize) {
 		try {
 			//TODO once EBSProvider works: implement proper stuff
-			File f = File.createTempFile("container_", ".data", new File(EBSProvider.getNewVolume(Container.MAX_SIZE)));
+			File f = File.createTempFile("container_", ".data", new File(EBSProvider.getNewVolume(maxSize)));
 			String fileName = f.getAbsolutePath();
 			f.delete();
-			return Container.createNew(fileName, Container.MAX_SIZE);
+			return Container.createNew(fileName, maxSize);
 		} catch (NewEBSException e) {
 			throw new CreateContainerException("Could not get EBS volume for new container", e);
 		} catch (IOException e) {
@@ -99,4 +143,5 @@ public class ContainerProviderImpl implements ContainerProvider, SealedListener 
 			throw new CreateContainerException("Could not reserve temporary file for container", e);
 		}
 	}
+	
 }

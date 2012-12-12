@@ -4,33 +4,39 @@ import java.util.Collection;
 import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-/**
- * Local name provider (proxy).
- * Follows default implementation scheme: using smaller names before larger ones.
- * Works based on trust, i.e. no exceptions for use of unreserved names and such.
- * singleton
- */
-public class LocalNameProviderImpl implements LocalFileNameProvider {
+public class DummyLocalNameProviderImpl implements LocalFileNameProvider {
 	
 	private NavigableSet<Long> pool;
 	private NavigableSet<Long> reserved;
 	
-	private static LocalNameProviderImpl instance = null;
+	private long current;
 	
-	public static LocalNameProviderImpl getInstance() {
+	private static DummyLocalNameProviderImpl instance = null;
+	
+	public static DummyLocalNameProviderImpl getInstance() {
 		if (instance == null)
-			instance = new LocalNameProviderImpl();
+			instance = new DummyLocalNameProviderImpl();
 		return instance;
 	}
 	
-	protected LocalNameProviderImpl() {
+	protected DummyLocalNameProviderImpl() {
 		pool = new ConcurrentSkipListSet<Long>();
 		reserved = new ConcurrentSkipListSet<Long>();
+		current = 1L;
+		feedPoolIfEmpty();
+	}
+	
+	private void feedPoolIfEmpty() {
+		if (pool.isEmpty()) {
+			addAuthorizedNameForFile(current);
+			current++;
+		}
 	}
 	
 	public long reserveForFile() {
 		long r = pool.first();
 		pool.remove(r);
+		feedPoolIfEmpty();
 		reserved.add(r);
 		return r;
 	}
@@ -46,7 +52,7 @@ public class LocalNameProviderImpl implements LocalFileNameProvider {
 	}
 	
 	public void returnUsedNameForFile(long name) {
-		//TODO send back to global name provider
+		addAuthorizedNameForFile(name);
 	}
 	
 	public void addAuthorizedNameForFile(long name) {
@@ -57,5 +63,4 @@ public class LocalNameProviderImpl implements LocalFileNameProvider {
 		for(Long n:names)
 			addAuthorizedNameForFile(n);
 	}
-	
 }

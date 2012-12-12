@@ -49,7 +49,16 @@ public class FileTail extends File {
 		this.headId = headId;
 	}
 	
+	public byte getTypeId() {
+		return TYPE_ID;
+	}
+	
 	public long getHeadId() {
 		return headId;
+	}
+	
+	/** @return length of file including overhead */
+	public long getFullLength() {
+		return getDataLength()+OVERHEAD_SIZE;
 	}
 }

@@ -1,11 +1,10 @@
 package com.abbink.steeldoor.serverfiles.container;
 
 import java.io.BufferedInputStream;
-import java.io.InputStream;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.exceptions.ContainerFileCorruptedException;
@@ -58,7 +57,7 @@ public class Container {
 			throw new CreateContainerException("Could not write initial container file", e);
 		}
 		ConcurrentMap<Long, FileInContainer> files = new ConcurrentHashMap<Long, FileInContainer>();
-		return new Container(fileName, HEADER_SIZE, MAX_SIZE, 0, UNSEALED, files);
+		return new Container(fileName, HEADER_SIZE, maxSize, 0, UNSEALED, files);
 	}
 	
 	/** absolute path on current machine */
@@ -78,7 +77,7 @@ public class Container {
 	
 	private ConcurrentMap<Long, FileInContainer> files;
 	
-	private Set<SealedListener> sealListeners = new ConcurrentSkipListSet<SealedListener>();
+	private Set<SealedListener> sealListeners = new HashSet<SealedListener>(); //hopefully the non-threadsafe HashSet won't fail
 	
 	private Container(String fileName, long currentSize, long maxSize, long currentDeleted, boolean sealed, ConcurrentMap<Long, FileInContainer> files) {
 		this.fileName = fileName;

@@ -11,24 +11,24 @@ import com.abbink.steeldoor.serverfiles.file.FileTail;
 
 public class FilePagerImpl implements FilePager {
 	
-	private MasterContainerReplicator replicator;
-	private LocalFileNameProvider nameProvider;
+	private MasterContainerReplicator containerReplicator;
+	private LocalFileNameProvider fileNameProvider;
 	
-	public static FilePagerImpl getInstance() {
-		//TODO
-		return new FilePagerImpl();
+	public static FilePagerImpl createNew(MasterContainerReplicator containerReplicator, LocalFileNameProvider fileNameProvider) {
+		return new FilePagerImpl(containerReplicator, fileNameProvider);
 	}
 	
-	private FilePagerImpl() {
-		
+	private FilePagerImpl(MasterContainerReplicator containerReplicator, LocalFileNameProvider fileNameProvider) {
+		this.containerReplicator = containerReplicator;
+		this.fileNameProvider = fileNameProvider;
 	}
 	
 	public File storeFile(File file, BufferedInputStream data) throws StoreFileException {
 		StoreFileException criticalError = null;
 		File head;
-		long tailId = nameProvider.reserveForFile();
+		long tailId = fileNameProvider.reserveForFile();
 		try {
-			file = replicator.storeFile(file, data, tailId);
+			file = containerReplicator.storeFile(file, data, tailId);
 		} catch (LocalReplicationException e) {
 			criticalError = new StoreFileException("Could not write file to container", e);
 		} catch (RemoteReplicationException e) {
@@ -39,11 +39,11 @@ public class FilePagerImpl implements FilePager {
 			if (criticalError != null) {
 				deleteFile(head);
 			}
-			nameProvider.useReservationForFile(file.getTailId());
+			fileNameProvider.useReservationForFile(file.getTailId());
 			FileTail tail = FileTail.createForStoring(file.getTailId(), head.getId(), head.getOwnerId(), head.getCookie());
-			tailId = nameProvider.reserveForFile();
+			tailId = fileNameProvider.reserveForFile();
 			try {
-				tail = replicator.storeFileTail(tail, data, tailId);
+				tail = containerReplicator.storeFileTail(tail, data, tailId);
 			} catch (LocalReplicationException e) {
 				criticalError = new StoreFileException("Could not write file tail to container", e);
 			} catch (RemoteReplicationException e) {
@@ -51,7 +51,7 @@ public class FilePagerImpl implements FilePager {
 			}
 			file = tail;
 		}
-		nameProvider.cancelReservationForFile(file.getTailId());
+		fileNameProvider.cancelReservationForFile(tailId);
 		
 		if (criticalError != null)
 			throw criticalError;

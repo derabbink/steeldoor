@@ -24,7 +24,7 @@ import com.abbink.steeldoor.serverfiles.io.DataWriteResult;
 /**
  * capable of writing logical Files to a container file
  */
-public final class FileWriter {
+public class FileWriter {
 	
 	/**
 	 * Writes {@linkplain data} and metadata until container is full or stream completes
@@ -178,15 +178,20 @@ public final class FileWriter {
 			if (maxLength > 0)
 				data.mark(buffer.length);
 			else {
+				//try one more read, in case we finished on the last possible byte (avoid reading over marker limit)
+				//if no more data exist, bytesRead will be -1
+				if (bytesRead < buffer.length && minRead == bytesRead)
+					bytesRead = data.read(buffer, 0, buffer.length-bytesRead);
 				//set stream position to first unconsumed byte
 				data.reset();
 				data.skip(minRead);
+				break;
 			}
 		}
 		buffer = md.digest(); //20 bytes
 		stream.write(buffer);
 		
-		return new DataWriteResult(length, bytesRead != -1);
+		return new DataWriteResult(length, bytesRead == -1);
 	}
 	
 	private static DataWriteResult writeFileTailDataAndChecksum(BufferedOutputStream stream, BufferedInputStream data, long maxLength) throws NoSuchAlgorithmException, IOException {
@@ -197,30 +202,12 @@ public final class FileWriter {
 		WriteHeaderException error = null;
 		try {
 			RandomAccessFile rnd = new RandomAccessFile(container.getFileName(), "rw");
-			//java's ByteArrayOutputStream implementation suffices
-			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-			DataOutputStream stream = new DataOutputStream(buffer);
 			try {
-				stream.writeByte(file.getTypeId());
-				stream.writeLong(file.getId());
-				stream.writeInt(file.getOwnerId());
-				stream.writeLong(file.getCookie());
-				stream.writeBoolean(FileInContainer.FILE_EXISTS);
-				stream.writeLong(file.getDataLength());
-				stream.writeLong(file.getTailId());
+				rnd.seek(file.getOffset());
+				rnd.write(generateFileHeader(file.getTypeId(), file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, file.getDataLength(), file.getTailId()));
 			} catch (IOException e) {
-				error = new WriteHeaderException("Writing header into buffer failed", e);
+				error = new WriteHeaderException("Writing header failed", e);
 			}
-			if (error == null) {
-				try {
-					rnd.seek(file.getOffset());
-					rnd.write(buffer.toByteArray());
-				} catch (IOException e) {
-					error = new WriteHeaderException("Writing buffered header failed", e);
-				}
-			}
-			stream.close(); //doesn't really do anything
-			buffer.close();
 			rnd.close();
 		} catch (FileNotFoundException e) {
 			error = new WriteHeaderException("Unable to open RandomAccessFile", e);
@@ -232,35 +219,32 @@ public final class FileWriter {
 			throw error;
 	}
 	
+	protected static byte[] generateFileHeader(byte typeId, long fileId, int ownerId, long cookie, boolean exists, long length, long tailId) throws IOException {
+		//java's implementation suffices
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		DataOutputStream stream = new DataOutputStream(byteStream);
+		stream.writeByte(typeId);
+		stream.writeLong(fileId);
+		stream.writeInt(ownerId);
+		stream.writeLong(cookie);
+		stream.writeBoolean(exists);
+		stream.writeLong(length);
+		stream.writeLong(tailId);
+		byte[] result = byteStream.toByteArray();
+		stream.close();
+		return result;
+	}
+	
 	private static void writeFileTailHeaders(Container container, FileTail fileTail) throws WriteHeaderException {
 		WriteHeaderException error = null;
 		try {
 			RandomAccessFile rnd = new RandomAccessFile(container.getFileName(), "rw");
-			//java's ByteArrayOutputStream implementation suffices
-			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-			DataOutputStream stream = new DataOutputStream(buffer);
 			try {
-				stream.writeByte(fileTail.getTypeId());
-				stream.writeLong(fileTail.getId());
-				stream.writeLong(fileTail.getHeadId());
-				stream.writeInt(fileTail.getOwnerId());
-				stream.writeLong(fileTail.getCookie());
-				stream.writeBoolean(FileInContainer.FILE_EXISTS);
-				stream.writeLong(fileTail.getDataLength());
-				stream.writeLong(fileTail.getTailId());
+				rnd.seek(fileTail.getOffset());
+				rnd.write(generateFileTailHeader(fileTail.getTypeId(), fileTail.getId(), fileTail.getHeadId(), fileTail.getOwnerId(), fileTail.getCookie(), FileInContainer.FILE_EXISTS, fileTail.getDataLength(), fileTail.getTailId()));
 			} catch (IOException e) {
-				error = new WriteHeaderException("Writing header into buffer failed", e);
+				error = new WriteHeaderException("Writing header failed", e);
 			}
-			if (error == null) {
-				try {
-					rnd.seek(fileTail.getOffset());
-					rnd.write(buffer.toByteArray());
-				} catch (IOException e) {
-					error = new WriteHeaderException("Writing buffered header failed", e);
-				}
-			}
-			stream.close(); //doesn't really do anything
-			buffer.close();
 			rnd.close();
 		} catch (FileNotFoundException e) {
 			error = new WriteHeaderException("Unable to open RandomAccessFile", e);
@@ -270,5 +254,22 @@ public final class FileWriter {
 		
 		if (error != null)
 			throw error;
+	}
+	
+	protected static byte[] generateFileTailHeader(byte typeId, long fileId, long headId, int ownerId, long cookie, boolean exists, long length, long tailId) throws IOException {
+		//java's implementation suffices
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		DataOutputStream stream = new DataOutputStream(byteStream);
+		stream.writeByte(typeId);
+		stream.writeLong(fileId);
+		stream.writeLong(headId);
+		stream.writeInt(ownerId);
+		stream.writeLong(cookie);
+		stream.writeBoolean(exists);
+		stream.writeLong(length);
+		stream.writeLong(tailId);
+		byte[] result = byteStream.toByteArray();
+		stream.close();
+		return result;
 	}
 }

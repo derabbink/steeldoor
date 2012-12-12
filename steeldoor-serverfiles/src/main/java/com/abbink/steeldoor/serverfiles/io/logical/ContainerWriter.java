@@ -8,18 +8,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.container.Container;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.SealContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
-import com.abbink.steeldoor.serverfiles.exceptions.WriteHeaderException;
-import com.abbink.steeldoor.serverfiles.file.File;
 
 /**
  * capable of writing container files
  */
-public final class ContainerWriter {
+public class ContainerWriter {
 	
 	public final static long POSITION_SEALED = 8; //9th byte (starting at 0)
 	
@@ -31,10 +28,9 @@ public final class ContainerWriter {
 	public static void createNew(String fileName, long maxSize) throws CreateContainerException {
 		CreateContainerException error = null;
 		try {
-			DataOutputStream stream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(fileName, false)));
+			BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(fileName, false));
 			try {
-				stream.writeLong(maxSize);
-				stream.writeBoolean(Container.UNSEALED);
+				stream.write(generateHeader(maxSize, Container.UNSEALED));
 			} catch (IOException e) {
 				error = new CreateContainerException("Unable to write container header", e);
 			}
@@ -48,6 +44,17 @@ public final class ContainerWriter {
 		
 		if (error!=null)
 			throw error;
+	}
+	
+	protected static byte[] generateHeader(long maxSize, boolean sealed) throws IOException {
+		//java's implementation suffices
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		DataOutputStream stream = new DataOutputStream(byteStream);
+		stream.writeLong(maxSize);
+		stream.writeBoolean(sealed);
+		byte[] result = byteStream.toByteArray();
+		stream.close();
+		return result;
 	}
 	
 	public static void truncate(Container container, long length) throws TruncateContainerFileException {

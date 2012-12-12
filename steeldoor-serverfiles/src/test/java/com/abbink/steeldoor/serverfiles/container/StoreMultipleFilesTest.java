@@ -4,7 +4,6 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -19,9 +18,10 @@ import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException;
 import com.abbink.steeldoor.serverfiles.file.File;
+import com.abbink.steeldoor.serverfiles.io.logical.TestableContainerWriter;
+import com.abbink.steeldoor.serverfiles.io.logical.TestableFileWriter;
 
 public class StoreMultipleFilesTest {
-	private java.io.File containerFile;
 	private Container cont;
 	private byte[] containerHeader;
 	private File file1;
@@ -36,8 +36,8 @@ public class StoreMultipleFilesTest {
 	private long fileId1 = (1L<<56)+(2L<<48)+(3L<<40)+(4L<<32)+(5L<<24)+(6L<<16)+(7L<<8)+8L;
 	private long fileId2 = (11L<<56)+(12L<<48)+(13L<<40)+(14L<<32)+(15L<<24)+(16L<<16)+(17L<<8)+18L;
 	private int fileOwnerId = (4<<24)+(3<<16)+(2<<8)+1;
-	private long fileCookie1 = (100L<<56)+(102L<<48)+(103L<<40)+(104L<<32)+(105L<<24)+(106L<<16)+(107L<<8)+108L;
-	private long fileCookie2 = (110L<<56)+(112L<<48)+(113L<<40)+(114L<<32)+(115L<<24)+(116L<<16)+(117L<<8)+118L;
+	private long fileCookie1 = (101L<<56)+(102L<<48)+(103L<<40)+(104L<<32)+(105L<<24)+(106L<<16)+(107L<<8)+108L;
+	private long fileCookie2 = (111L<<56)+(112L<<48)+(113L<<40)+(114L<<32)+(115L<<24)+(116L<<16)+(117L<<8)+118L;
 	
 	@Before
 	public void prepareContainerAndData() throws CreateContainerException, IOException, NoSuchAlgorithmException{
@@ -47,23 +47,11 @@ public class StoreMultipleFilesTest {
 	}
 	
 	private void createContainer() throws IOException, CreateContainerException {
-		containerFile = java.io.File.createTempFile("container_", ".test", new java.io.File("tmp"));
-		containerFile.delete();
-		cont = Container.createNew(containerFile.getAbsolutePath(), Container.MAX_SIZE);
+		cont = TestableContainerProviderImpl.createContainerFromSpec(Container.MAX_SIZE);
 	}
 	
 	private void createContainerHeader() throws IOException {
-		//java's ByteArrayOutputStream implementation suffices
-		java.io.ByteArrayOutputStream bstream = new java.io.ByteArrayOutputStream();
-		DataOutputStream dstream = new DataOutputStream(bstream);
-		
-		dstream.writeLong(Container.MAX_SIZE);
-		dstream.writeBoolean(Container.UNSEALED);
-		
-		dstream.flush();
-		containerHeader = bstream.toByteArray();
-		dstream.close(); //doesn't really do anything
-		bstream.close();
+		containerHeader = TestableContainerWriter.generateHeader(Container.MAX_SIZE, Container.UNSEALED);
 	}
 	
 	private void createFilesAndAllData() throws IOException, NoSuchAlgorithmException {
@@ -90,39 +78,8 @@ public class StoreMultipleFilesTest {
 	}
 	
 	private void createFileHeaders() throws IOException {
-		//java's ByteArrayOutputStream implementation suffices
-		java.io.ByteArrayOutputStream bstream = new java.io.ByteArrayOutputStream();
-		DataOutputStream dstream = new DataOutputStream(bstream);
-		
-		dstream.writeByte(file1.getTypeId());
-		dstream.writeLong(file1.getId());
-		dstream.writeInt(file1.getOwnerId());
-		dstream.writeLong(file1.getCookie());
-		dstream.writeBoolean(FileInContainer.FILE_EXISTS);
-		dstream.writeLong(file1.getDataLength());
-		dstream.writeLong(file1.getTailId());
-		
-		dstream.flush();
-		fileHeader1 = bstream.toByteArray();
-		dstream.close(); //doesn't really do anything
-		bstream.close();
-		
-		
-		bstream = new java.io.ByteArrayOutputStream();
-		dstream = new DataOutputStream(bstream);
-		
-		dstream.writeByte(file2.getTypeId());
-		dstream.writeLong(file2.getId());
-		dstream.writeInt(file2.getOwnerId());
-		dstream.writeLong(file2.getCookie());
-		dstream.writeBoolean(FileInContainer.FILE_EXISTS);
-		dstream.writeLong(file2.getDataLength());
-		dstream.writeLong(file2.getTailId());
-		
-		dstream.flush();
-		fileHeader2 = bstream.toByteArray();
-		dstream.close(); //doesn't really do anything
-		bstream.close();
+		fileHeader1 = TestableFileWriter.generateFileHeader(file1.getTypeId(), file1.getId(), file1.getOwnerId(), file1.getCookie(), FileInContainer.FILE_EXISTS, file1.getDataLength(), file1.getTailId());
+		fileHeader2 = TestableFileWriter.generateFileHeader(file2.getTypeId(), file2.getId(), file2.getOwnerId(), file2.getCookie(), FileInContainer.FILE_EXISTS, file2.getDataLength(), file2.getTailId());
 	}
 	
 	@Test
@@ -142,12 +99,13 @@ public class StoreMultipleFilesTest {
 		bstream.write(checksum2);
 		byte[] expected = bstream.toByteArray();
 		bstream.close();
-		byte[] actual = FileUtils.readFileToByteArray(containerFile);
+		byte[] actual = FileUtils.readFileToByteArray(new java.io.File(cont.getFileName()));
 		assertArrayEquals(expected, actual);
 	}
 	
 	@After
 	public void deleteContainerFile() {
-		containerFile.delete();
+		java.io.File f = new java.io.File(cont.getFileName());
+		f.delete();
 	}
 }

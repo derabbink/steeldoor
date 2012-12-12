@@ -8,4 +8,10 @@ public interface FileInContainer {
 	
 	/** returns the type identifier for the File */
 	public byte getTypeId();
+	
+	/** @return length of the data section on disk */
+	public long getDataLength();
+	
+	/** @return length of file including overhead */
+	public long getFullLength();
 }

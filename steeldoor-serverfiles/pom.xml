@@ -40,6 +40,12 @@
 			<artifactId>steeldoor-names</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>1.9.5</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 	<description>Contains implementation of different file types the server can host.
 Handles replication over multiple machines</description>
