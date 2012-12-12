@@ -14,6 +14,7 @@ import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException
 import com.abbink.steeldoor.serverfiles.file.File;
 import com.abbink.steeldoor.serverfiles.file.FileTail;
 import com.abbink.steeldoor.serverfiles.io.logical.ContainerWriter;
+import com.abbink.steeldoor.serverfiles.io.logical.FileTailWriter;
 import com.abbink.steeldoor.serverfiles.io.logical.FileWriter;
 
 /**
@@ -162,7 +163,7 @@ public class Container {
 	 */
 	public synchronized File storeFile(File file, BufferedInputStream data, long tailId) throws WriteFileInContainerException {
 		try {
-			file = FileWriter.writeFile(this, file, data, getRemainingSize(), tailId);
+			file = FileWriter.write(this, file, data, getRemainingSize(), tailId);
 			currentSize += file.getFullLength();
 			getFiles().put(file.getId(), file);
 			if (isFull())
@@ -185,7 +186,7 @@ public class Container {
 	 */
 	public synchronized FileTail storeFileTail(FileTail fileTail, BufferedInputStream data, long nextTailId) throws WriteFileInContainerException {
 		try {
-			fileTail = FileWriter.writeFileTail(this, fileTail, data, getRemainingSize(), nextTailId);
+			fileTail = FileTailWriter.write(this, fileTail, data, getRemainingSize(), nextTailId);
 			currentSize += fileTail.getFullLength();
 			getFiles().put(fileTail.getId(), fileTail);
 			if (isFull())

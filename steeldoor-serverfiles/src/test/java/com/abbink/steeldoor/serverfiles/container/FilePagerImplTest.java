@@ -22,6 +22,7 @@ import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.file.File;
 import com.abbink.steeldoor.serverfiles.file.FileTail;
 import com.abbink.steeldoor.serverfiles.io.logical.TestableContainerWriter;
+import com.abbink.steeldoor.serverfiles.io.logical.TestableFileTailWriter;
 import com.abbink.steeldoor.serverfiles.io.logical.TestableFileWriter;
 
 public class FilePagerImplTest {
@@ -87,8 +88,8 @@ public class FilePagerImplTest {
 	private void createHeaders() throws IOException {
 		containerHeader1 = TestableContainerWriter.generateHeader(maxSize, Container.SEALED);
 		containerHeader2 = TestableContainerWriter.generateHeader(maxSize, Container.SEALED);
-		fileHeader = TestableFileWriter.generateFileHeader(file.getTypeId(), file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, data1.length, file.getId()+1);
-		fileTailHeader = TestableFileWriter.generateFileTailHeader(FileTail.TYPE_ID, file.getId()+1, file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, data2.length, FileInContainer.NO_TAIL_ID);
+		fileHeader = TestableFileWriter.generateHeader(file.getTypeId(), file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, data1.length, file.getId()+1);
+		fileTailHeader = TestableFileTailWriter.generateHeader(FileTail.TYPE_ID, file.getId()+1, file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, data2.length, FileInContainer.NO_TAIL_ID);
 	}
 	
 	@Test

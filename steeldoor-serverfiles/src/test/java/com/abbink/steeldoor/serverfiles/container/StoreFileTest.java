@@ -73,7 +73,7 @@ public class StoreFileTest {
 	}
 	
 	private void createFileHeader() throws IOException {
-		fileHeader = TestableFileWriter.generateFileHeader(file.getTypeId(), file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, file.getDataLength(), file.getTailId());
+		fileHeader = TestableFileWriter.generateHeader(file.getTypeId(), file.getId(), file.getOwnerId(), file.getCookie(), FileInContainer.FILE_EXISTS, file.getDataLength(), file.getTailId());
 	}
 	
 	@Test

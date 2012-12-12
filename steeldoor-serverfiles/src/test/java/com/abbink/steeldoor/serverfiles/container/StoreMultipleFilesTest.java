@@ -78,8 +78,8 @@ public class StoreMultipleFilesTest {
 	}
 	
 	private void createFileHeaders() throws IOException {
-		fileHeader1 = TestableFileWriter.generateFileHeader(file1.getTypeId(), file1.getId(), file1.getOwnerId(), file1.getCookie(), FileInContainer.FILE_EXISTS, file1.getDataLength(), file1.getTailId());
-		fileHeader2 = TestableFileWriter.generateFileHeader(file2.getTypeId(), file2.getId(), file2.getOwnerId(), file2.getCookie(), FileInContainer.FILE_EXISTS, file2.getDataLength(), file2.getTailId());
+		fileHeader1 = TestableFileWriter.generateHeader(file1.getTypeId(), file1.getId(), file1.getOwnerId(), file1.getCookie(), FileInContainer.FILE_EXISTS, file1.getDataLength(), file1.getTailId());
+		fileHeader2 = TestableFileWriter.generateHeader(file2.getTypeId(), file2.getId(), file2.getOwnerId(), file2.getCookie(), FileInContainer.FILE_EXISTS, file2.getDataLength(), file2.getTailId());
 	}
 	
 	@Test

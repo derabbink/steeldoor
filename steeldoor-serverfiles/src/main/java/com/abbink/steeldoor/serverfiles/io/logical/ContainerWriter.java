@@ -16,7 +16,7 @@ import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileExceptio
 /**
  * capable of writing container files
  */
-public class ContainerWriter {
+public class ContainerWriter extends Writer {
 	
 	public final static long POSITION_SEALED = 8; //9th byte (starting at 0)
 	
@@ -44,17 +44,6 @@ public class ContainerWriter {
 		
 		if (error!=null)
 			throw error;
-	}
-	
-	protected static byte[] generateHeader(long maxSize, boolean sealed) throws IOException {
-		//java's implementation suffices
-		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-		DataOutputStream stream = new DataOutputStream(byteStream);
-		stream.writeLong(maxSize);
-		stream.writeBoolean(sealed);
-		byte[] result = byteStream.toByteArray();
-		stream.close();
-		return result;
 	}
 	
 	public static void truncate(Container container, long length) throws TruncateContainerFileException {
@@ -112,5 +101,16 @@ public class ContainerWriter {
 		
 		if (error != null)
 			throw error;
+	}
+	
+	protected static byte[] generateHeader(long maxSize, boolean sealed) throws IOException {
+		//java's implementation suffices
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		DataOutputStream stream = new DataOutputStream(byteStream);
+		stream.writeLong(maxSize);
+		stream.writeBoolean(sealed);
+		byte[] result = byteStream.toByteArray();
+		stream.close();
+		return result;
 	}
 }
