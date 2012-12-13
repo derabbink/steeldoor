@@ -1,6 +1,7 @@
 package com.abbink.steeldoor.serverfiles.io;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,5 +26,23 @@ public class Reader {
 		else
 			buffer = Arrays.copyOf(buffer, bytesRead);
 		return new ByteArrayInputStream(buffer);
+	}
+	
+	/**
+	 * reads from input and passes it on to output
+	 * stops when input is exhausted or the requested number of bytes was copied
+	 * @param input
+	 * @param length
+	 * @param output
+	 * @throws IOException 
+	 */
+	public static void readContinuous(BufferedInputStream input, long length, BufferedOutputStream output) throws IOException {
+		byte[] buffer = new byte[1024];
+		int bytesRead;
+		while (length > 0 && (bytesRead = input.read(buffer)) != -1) {
+			int minRead = (int) Math.min(bytesRead, length);
+			length -= minRead;
+			output.write(buffer, 0, minRead);
+		}
 	}
 }

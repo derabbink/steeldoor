@@ -1,11 +1,15 @@
 package com.abbink.steeldoor.serverfiles.file;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 
 import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.TailFileInContainer;
+import com.abbink.steeldoor.serverfiles.container.Container;
 import com.abbink.steeldoor.serverfiles.exceptions.NothingReadableException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadDataException;
 import com.abbink.steeldoor.serverfiles.exceptions.ReadFileException;
+import com.abbink.steeldoor.serverfiles.io.logical.FileReader;
 import com.abbink.steeldoor.serverfiles.io.logical.FileTailReadResult;
 import com.abbink.steeldoor.serverfiles.io.logical.FileTailReader;
 
@@ -84,5 +88,10 @@ public class FileTail extends File implements TailFileInContainer {
 	@Override
 	public long getFullLength() {
 		return getDataLength()+OVERHEAD_SIZE;
+	}
+	
+	@Override
+	public void retrieveData(Container container, BufferedOutputStream stream) throws ReadDataException {
+		FileTailReader.retrieveData(container, this, stream);
 	}
 }

@@ -1,10 +1,15 @@
 package com.abbink.steeldoor.serverfiles.io.logical;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import com.abbink.steeldoor.serverfiles.container.Container;
 import com.abbink.steeldoor.serverfiles.exceptions.NothingReadableException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadDataException;
 import com.abbink.steeldoor.serverfiles.exceptions.ReadFileException;
 import com.abbink.steeldoor.serverfiles.file.File;
 import com.abbink.steeldoor.serverfiles.file.FileSpec;
@@ -41,4 +46,25 @@ public class FileReader {
 		}
 	}
 	
+	
+	public static void retrieveData(Container container, File file, BufferedOutputStream stream) throws ReadDataException {
+		ReadDataException error = null;
+		try {
+			BufferedInputStream bstream = new BufferedInputStream(new FileInputStream(container.getFileName()));
+			try {
+				bstream.skip(file.getOffset()+File.HEADER_SIZE);
+				Reader.readContinuous(bstream, file.getDataLength(), stream);
+			} catch (IOException e) {
+				error = new ReadDataException("Could not read pass data section to output", e);
+			}
+			bstream.close();
+		} catch (FileNotFoundException e) {
+			throw new ReadDataException("Could not open FileInputStream", e);
+		} catch (IOException e) {
+			throw new ReadDataException("Could not close BufferedInputStream", e);
+		}
+		
+		if (error != null)
+			throw error;
+	}
 }

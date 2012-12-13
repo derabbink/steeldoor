@@ -1,6 +1,7 @@
 package com.abbink.steeldoor.serverfiles.container;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +12,7 @@ import com.abbink.steeldoor.serverfiles.exceptions.ContainerFileCorruptedExcepti
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.NothingReadableException;
 import com.abbink.steeldoor.serverfiles.exceptions.ReadContainerException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadDataException;
 import com.abbink.steeldoor.serverfiles.exceptions.ReadFileException;
 import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
 import com.abbink.steeldoor.serverfiles.exceptions.UnknownFileException;
@@ -221,7 +223,7 @@ public class Container {
 	 * @param bytesConsumed the number of bytes consumed before this method was invoked
 	 * @throws ReadFileException if a FileInContainer is unreadable
 	 */
-	public synchronized void readFiles(BufferedInputStream stream, long bytesConsumed) throws ReadFileException {
+	protected synchronized void readFiles(BufferedInputStream stream, long bytesConsumed) throws ReadFileException {
 		boolean read = true;
 		while (read) {
 			try {
@@ -235,5 +237,15 @@ public class Container {
 				read = false;
 			}
 		}
+	}
+	
+	/**
+	 * Produces a file in this container
+	 * assumes the file exists
+	 * @param file
+	 * @param stream stream to write retrieved data into
+	 */
+	public synchronized void retrieveFile(FileInContainer file, BufferedOutputStream stream) throws ReadDataException {
+		file.retrieveData(this, stream);
 	}
 }
