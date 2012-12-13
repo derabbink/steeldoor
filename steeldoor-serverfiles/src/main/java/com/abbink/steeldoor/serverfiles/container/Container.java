@@ -9,11 +9,18 @@ import java.util.concurrent.ConcurrentMap;
 import com.abbink.steeldoor.serverfiles.FileInContainer;
 import com.abbink.steeldoor.serverfiles.exceptions.ContainerFileCorruptedException;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
+import com.abbink.steeldoor.serverfiles.exceptions.NothingReadableException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadContainerException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadFileException;
 import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
+import com.abbink.steeldoor.serverfiles.exceptions.UnknownFileException;
 import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException;
 import com.abbink.steeldoor.serverfiles.file.File;
 import com.abbink.steeldoor.serverfiles.file.FileTail;
+import com.abbink.steeldoor.serverfiles.io.logical.ContainerReadResult;
+import com.abbink.steeldoor.serverfiles.io.logical.ContainerReader;
 import com.abbink.steeldoor.serverfiles.io.logical.ContainerWriter;
+import com.abbink.steeldoor.serverfiles.io.logical.FileInContainerReader;
 import com.abbink.steeldoor.serverfiles.io.logical.FileTailWriter;
 import com.abbink.steeldoor.serverfiles.io.logical.FileWriter;
 
@@ -40,9 +47,18 @@ public class Container {
 	 * @param fileName absolute path on current machine
 	 * @return
 	 */
-//	public static Container loadFromFile(String fileName) {
-//		
-//	}
+	public static Container loadFromFile(String fileName) throws ReadContainerException {
+		ContainerReadResult read = ContainerReader.read(fileName);
+		ContainerSpec spec = read.getResult();
+		ConcurrentMap<Long, FileInContainer> files = new ConcurrentHashMap<Long, FileInContainer>();
+		Container result = new Container(fileName, HEADER_SIZE, spec.getMaxSize(), 0, spec.isSealed(), files);
+		try {
+			result.readFiles(read.getStream(), read.getBytesConsumed());
+		} catch (ReadFileException e) {
+			//TODO not critical at this stage of dev.
+		}
+		return result;
+	}
 	
 	/**
 	 * 
@@ -195,6 +211,29 @@ public class Container {
 		} catch (ContainerFileCorruptedException e) {
 			seal();
 			throw new WriteFileInContainerException("Could not write file tail", e);
+		}
+	}
+	
+	/**
+	 * reads all ContainerInFiles from provided stream
+	 * assumes the first read will be the header of such a file
+	 * @param stream
+	 * @param bytesConsumed the number of bytes consumed before this method was invoked
+	 * @throws ReadFileException if a FileInContainer is unreadable
+	 */
+	public synchronized void readFiles(BufferedInputStream stream, long bytesConsumed) throws ReadFileException {
+		boolean read = true;
+		while (read) {
+			try {
+				FileInContainer f = FileInContainerReader.read(stream, bytesConsumed);
+				getFiles().put(f.getId(), f);
+			} catch (UnknownFileException e) {
+				//TODO container is probably corrupt. not relevant at this stage of dev.
+			} catch (ReadFileException e) {
+				//TODO just continue. not relevant at this stage of dev.
+			} catch (NothingReadableException e) {
+				read = false;
+			}
 		}
 	}
 }

@@ -19,6 +19,7 @@ import com.abbink.steeldoor.serverfiles.exceptions.WriteFileInContainerException
 import com.abbink.steeldoor.serverfiles.exceptions.WriteHeaderException;
 import com.abbink.steeldoor.serverfiles.file.File;
 import com.abbink.steeldoor.serverfiles.io.DataWriteResult;
+import com.abbink.steeldoor.serverfiles.io.Writer;
 
 /**
  * capable of writing logical Files to a container file
@@ -147,7 +148,7 @@ public class FileWriter extends Writer {
 			throw error;
 	}
 	
-	protected static byte[] generateHeader(byte typeId, long fileId, int ownerId, long cookie, boolean exists, long length, long tailId) throws IOException {
+	protected static byte[] generateHeader(byte typeId, long fileId, int ownerId, long cookie, boolean deleted, long length, long tailId) throws IOException {
 		//java's implementation suffices
 		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 		DataOutputStream stream = new DataOutputStream(byteStream);
@@ -155,7 +156,7 @@ public class FileWriter extends Writer {
 		stream.writeLong(fileId);
 		stream.writeInt(ownerId);
 		stream.writeLong(cookie);
-		stream.writeBoolean(exists);
+		stream.writeBoolean(deleted);
 		stream.writeLong(length);
 		stream.writeLong(tailId);
 		byte[] result = byteStream.toByteArray();

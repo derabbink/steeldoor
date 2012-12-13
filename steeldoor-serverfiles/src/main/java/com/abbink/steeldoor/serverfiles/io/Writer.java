@@ -1,4 +1,4 @@
-package com.abbink.steeldoor.serverfiles.io.logical;
+package com.abbink.steeldoor.serverfiles.io;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;

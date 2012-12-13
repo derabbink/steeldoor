@@ -12,6 +12,7 @@ import com.abbink.steeldoor.serverfiles.container.Container;
 import com.abbink.steeldoor.serverfiles.exceptions.CreateContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.SealContainerException;
 import com.abbink.steeldoor.serverfiles.exceptions.TruncateContainerFileException;
+import com.abbink.steeldoor.serverfiles.io.Writer;
 
 /**
  * capable of writing container files

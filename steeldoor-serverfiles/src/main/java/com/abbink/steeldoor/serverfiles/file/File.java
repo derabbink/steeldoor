@@ -1,6 +1,12 @@
 package com.abbink.steeldoor.serverfiles.file;
 
+import java.io.BufferedInputStream;
+
 import com.abbink.steeldoor.serverfiles.FileInContainer;
+import com.abbink.steeldoor.serverfiles.exceptions.NothingReadableException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadFileException;
+import com.abbink.steeldoor.serverfiles.io.logical.FileReadResult;
+import com.abbink.steeldoor.serverfiles.io.logical.FileReader;
 
 /**
  * class representing an ordinary logical file
@@ -58,6 +64,21 @@ public class File implements FileInContainer {
 	 */
 	public static File addLocation(File oldFile, long offset, long dataLength, long tailId) {
 		return new File(oldFile.getId(), oldFile.getOwnerId(), oldFile.getCookie(), oldFile.isDeleted(), offset, dataLength, tailId);
+	}
+	
+	/**
+	 * reads a File from stream
+	 * assumes the first read will be the header (WITHOUT typeId) of such a file
+	 * after reading header, it skips over data and tail sections
+	 * @param stream
+	 * @param bytesConsumed
+	 * @return
+	 */
+	public static File readFromStream(BufferedInputStream stream, long bytesConsumed) throws ReadFileException, NothingReadableException {
+		FileReadResult read = FileReader.read(stream, bytesConsumed);
+		FileSpec spec = read.getResult();
+		File result = new File(spec.getId(), spec.getOwnerId(), spec.getCookie(), spec.isDeleted(), spec.getOffset(), spec.getDataLength(), spec.getTailId());
+		return result;
 	}
 	
 	protected File(long id, int ownerId, long cookie, boolean deleted, long offset, long dataLength, long tailId) {

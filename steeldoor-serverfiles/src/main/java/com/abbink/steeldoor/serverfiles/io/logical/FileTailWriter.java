@@ -103,7 +103,7 @@ public class FileTailWriter extends FileWriter {
 		return writeFileDataAndChecksum(stream, data, maxLength);
 	}
 	
-	protected static byte[] generateHeader(byte typeId, long fileId, long headId, int ownerId, long cookie, boolean exists, long length, long tailId) throws IOException {
+	protected static byte[] generateHeader(byte typeId, long fileId, long headId, int ownerId, long cookie, boolean deleted, long length, long tailId) throws IOException {
 		//java's implementation suffices
 		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 		DataOutputStream stream = new DataOutputStream(byteStream);
@@ -112,7 +112,7 @@ public class FileTailWriter extends FileWriter {
 		stream.writeLong(headId);
 		stream.writeInt(ownerId);
 		stream.writeLong(cookie);
-		stream.writeBoolean(exists);
+		stream.writeBoolean(deleted);
 		stream.writeLong(length);
 		stream.writeLong(tailId);
 		byte[] result = byteStream.toByteArray();

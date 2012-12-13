@@ -1,10 +1,17 @@
 package com.abbink.steeldoor.serverfiles.file;
 
+import java.io.BufferedInputStream;
+
 import com.abbink.steeldoor.serverfiles.FileInContainer;
+import com.abbink.steeldoor.serverfiles.TailFileInContainer;
+import com.abbink.steeldoor.serverfiles.exceptions.NothingReadableException;
+import com.abbink.steeldoor.serverfiles.exceptions.ReadFileException;
+import com.abbink.steeldoor.serverfiles.io.logical.FileTailReadResult;
+import com.abbink.steeldoor.serverfiles.io.logical.FileTailReader;
 
 /** tail of a file. can be followed by another file tail */
-public class FileTail extends File {
-	public static byte TYPE_ID = 2;
+public class FileTail extends File implements TailFileInContainer {
+	public static final byte TYPE_ID = 2;
 	
 	public static final long HEADER_SIZE = 1 //file type id (byte: 1B)
 			+8 //file id (long, 8B)
@@ -44,11 +51,27 @@ public class FileTail extends File {
 		return new FileTail(oldFileTail.getId(), oldFileTail.getHeadId(), oldFileTail.getOwnerId(), oldFileTail.getCookie(), oldFileTail.isDeleted(), offset, dataLength, tailId);
 	}
 	
+	/**
+	 * reads a FileTail from stream
+	 * assumes the first read will be the header (WITHOUT typeId) of such a file
+	 * after reading header, it skips over data and tail sections
+	 * @param stream
+	 * @param bytesConsumed
+	 * @return
+	 */
+	public static FileTail readFromStream(BufferedInputStream stream, long bytesConsumed) throws ReadFileException, NothingReadableException {
+		FileTailReadResult read = FileTailReader.read(stream, bytesConsumed);
+		FileTailSpec spec = read.getResult();
+		FileTail result = new FileTail(spec.getId(), spec.getHeadId(), spec.getOwnerId(), spec.getCookie(), spec.isDeleted(), spec.getOffset(), spec.getDataLength(), spec.getTailId());
+		return result;
+	}
+	
 	protected FileTail(long id, long headId, int ownerId, long cookie, boolean deleted, long offset, long dataLength, long tailId) {
 		super(id, ownerId, cookie, deleted, offset, dataLength, tailId);
 		this.headId = headId;
 	}
 	
+	@Override
 	public byte getTypeId() {
 		return TYPE_ID;
 	}
@@ -58,6 +81,7 @@ public class FileTail extends File {
 	}
 	
 	/** @return length of file including overhead */
+	@Override
 	public long getFullLength() {
 		return getDataLength()+OVERHEAD_SIZE;
 	}
