@@ -228,7 +228,11 @@ public class Container {
 		while (read) {
 			try {
 				FileInContainer f = FileInContainerReader.read(stream, bytesConsumed);
-				getFiles().put(f.getId(), f);
+				if (f.isDeleted()) {
+					currentDeleted += f.getFullLength();
+				} else {
+					getFiles().put(f.getId(), f);
+				}
 			} catch (UnknownFileException e) {
 				//TODO container is probably corrupt. not relevant at this stage of dev.
 			} catch (ReadFileException e) {
